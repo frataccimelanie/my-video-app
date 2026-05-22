@@ -160,7 +160,7 @@
 
             statusMessage.textContent = "Step 2/3: Uploading audio track to cloud storage... (Takes a few seconds)";
 
-            // 2. FIXED UPLOADER: Post audio to TmpFiles.org which prevents automated deletion
+            // 2. Post audio to TmpFiles.org which prevents automated deletion
             const formData = new FormData();
             formData.append("file", audioFile);
 
@@ -173,8 +173,6 @@
                 throw new Error("Audio cloud transmission failed. Try compressing file size.");
             }
             const tmpfilesData = await audioUploadResponse.json();
-            
-            // TmpFiles gives a viewing URL, we dynamically switch it to a direct download URL for Replicate
             const secureAudioUrl = tmpfilesData.data.url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/");
 
             statusMessage.textContent = "Step 3/3: Initiating Replicate GPU video synthesis arrays...";
@@ -214,7 +212,8 @@
             while (prediction.status !== "succeeded" && prediction.status !== "failed") {
                 await new Promise(resolve => setTimeout(resolve, 4000));
                 
-                const checkResponse = await fetchTransform = await fetch(`https://cors-anywhere.herokuapp.com/https://api.replicate.com/v1/predictions/${predictionId}`, {
+                // TYPO REMOVED: Cleaned up assignment breakdown
+                const checkResponse = await fetch(`https://cors-anywhere.herokuapp.com/https://api.replicate.com/v1/predictions/${predictionId}`, {
                     headers: { "Authorization": `Bearer ${apiKey}` }
                 });
                 prediction = await checkResponse.json();
