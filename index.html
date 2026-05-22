@@ -86,7 +86,7 @@
 
 <div class="container">
     <h2>AI Singing Video Studio</h2>
-    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Uses secure developer proxy bridges to animate face portraits.</p>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Processes assets through cloud gateways to eliminate payload structural errors.</p>
 
     <form id="videoForm">
         <div class="input-group">
@@ -130,7 +130,7 @@
         submitBtn.disabled = true;
         videoWrapper.style.display = 'none';
         statusMessage.style.color = 'var(--text-muted)';
-        statusMessage.textContent = "Optimizing assets for high-speed delivery...";
+        statusMessage.textContent = "Step 1/3: Transforming image asset to web-link packaging...";
 
         const toBase64Raw = file => new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -143,8 +143,7 @@
             const rawImageBase64 = await toBase64Raw(imageFile);
             const rawAudioBase64 = await toBase64Raw(audioFile);
 
-            statusMessage.textContent = "Uploading image link package...";
-
+            // 1. Upload the image to Imgur
             const imgurResponse = await fetch("https://api.imgur.com/3/image", {
                 method: "POST",
                 headers: {
@@ -155,14 +154,32 @@
             });
 
             if (!imgurResponse.ok) {
-                throw new Error("Cloud asset hosting failed. Try a smaller size image.");
+                throw new Error("Cloud image asset hosting failed. Check internet connection.");
             }
             const imgurData = await imgurResponse.json();
             const secureImageUrl = imgurData.data.link;
 
-            statusMessage.textContent = "Connecting to Replicate compute node array... (This may request a temporary demo activation below)";
+            statusMessage.textContent = "Step 2/3: Staging audio file to secure compute storage...";
 
-            // FIXED: Swapped to cors-anywhere and updated header pattern to Bearer format
+            // 2. Upload the audio file to a fast, free text hosting bucket to bypass string limit rejections
+            const audioUploadResponse = await fetch("https://file.io", {
+                method: "POST",
+                body: (() => {
+                    const formData = new FormData();
+                    formData.append("file", audioFile);
+                    return formData;
+                })()
+            });
+
+            if (!audioUploadResponse.ok) {
+                throw new Error("Cloud audio staging failed. Try a smaller audio snippet.");
+            }
+            const audioData = await audioUploadResponse.json();
+            const secureAudioUrl = audioData.link;
+
+            statusMessage.textContent = "Step 3/3: Initiating SadTalker AI node cluster pipeline...";
+
+            // 3. Fire the payload links cleanly to Replicate
             const startResponse = await fetch("https://cors-anywhere.herokuapp.com/https://api.replicate.com/v1/predictions", {
                 method: "POST",
                 headers: {
@@ -173,7 +190,7 @@
                     version: "922c12c5c82d47af2e1f5d485fbc35da5b2d8ab03b7484df7ff3a3e6188b4887",
                     input: {
                         source_image: secureImageUrl,
-                        driven_audio: `data:${audioFile.type};base64,${rawAudioBase64}`,
+                        driven_audio: secureAudioUrl, // No more messy data strings!
                         preprocess: "crop",
                         still: false
                     }
@@ -181,20 +198,21 @@
             });
 
             if (startResponse.status === 403) {
-                throw new Error("⚠️ PROXY ACCESS REQUIRED: Click the 'Demo Activation' link in the instruction steps to authorize your browser session, then try again.");
+                throw new Error("⚠️ PROXY ACCESS EXPIRED: Refresh your authorization window at cors-anywhere.herokuapp.com/corsdemo, click the button, and re-submit.");
             }
 
             if (!startResponse.ok) {
-                throw new Error(`Replicate Gateway Error (Status: ${startResponse.status}). Double check your r8_ key.`);
+                const errData = await startResponse.json();
+                throw new Error(`Replicate Gateway Error (Status: ${startResponse.status}): ${errData.detail || 'Malformed inputs'}`);
             }
 
             let prediction = await startResponse.json();
             const predictionId = prediction.id;
 
-            statusMessage.textContent = "🎬 AI cluster is physically mapping face geometries... (1-2 minutes)";
+            statusMessage.textContent = "🎬 AI cluster is mapping face geometries and voice syncing... (1-2 minutes)";
             
             while (prediction.status !== "succeeded" && prediction.status !== "failed") {
-                await new Promise(resolve => setTimeout(resolve, 4000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
                 
                 const checkResponse = await fetch(`https://cors-anywhere.herokuapp.com/https://api.replicate.com/v1/predictions/${predictionId}`, {
                     headers: { "Authorization": `Bearer ${apiKey}` }
@@ -202,16 +220,16 @@
                 prediction = await checkResponse.json();
                 
                 if (prediction.status === "processing") {
-                    statusMessage.textContent = "🎬 Processing lip tracks and rendering facial frames...";
+                    statusMessage.textContent = "🎬 Core rendering in progress. Constructing audio-driven mouth and face vectors...";
                 }
             }
 
             if (prediction.status === "failed") {
-                throw new Error("AI engine aborted processing. Try compressing your audio clip track down.");
+                throw new Error("AI core script rejected animation processing. Ensure your portrait has a clearly visible face.");
             }
 
             statusMessage.style.color = '#10b981';
-            statusMessage.textContent = "🚀 Video Rendered Perfectly! Play your AI singing video below:";
+            statusMessage.textContent = "🚀 Video Rendered Perfectly! Play your AI singing animation below:";
             videoPlayer.src = prediction.output;
             videoWrapper.style.display = 'block';
 
