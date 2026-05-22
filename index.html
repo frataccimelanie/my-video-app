@@ -85,7 +85,7 @@
 
 <div class="container">
     <h2>AI Singing Video Studio</h2>
-    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Animates portraits to talk and sing using Replicate AI cloud clusters.</p>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Optimized with external data pipeline bridges to bypass data volume blocks.</p>
 
     <form id="videoForm">
         <div class="input-group">
@@ -129,24 +129,39 @@
         submitBtn.disabled = true;
         videoWrapper.style.display = 'none';
         statusMessage.style.color = 'var(--text-muted)';
-        statusMessage.textContent = "Converting files and launching cloud animation processing...";
+        statusMessage.textContent = "Uploading image asset to high-capacity cloud storage...";
 
-        // Helper function to turn local files into readable data URLs for the API
-        const toBase64 = file => new Promise((resolve, reject) => {
+        // Helper function to extract text strings safely for structural form posts
+        const toBase64Raw = file => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
             reader.onerror = error => reject(error);
         });
 
         try {
-            const imageBase64 = await toBase64(imageFile);
-            const audioBase64 = await toBase64(audioFile);
+            const rawImageBase64 = await toBase64Raw(imageFile);
+            const rawAudioBase64 = await toBase64Raw(audioFile);
 
-            statusMessage.textContent = "Uploading files to Replicate GPU servers... (This takes a moment)";
+            // 1. Post target asset to anonymous cloud storage via Imgur API to obtain direct link
+            const imgurResponse = await fetch("https://api.imgur.com/3/image", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Client-ID 546c25a59c58ad7",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ image: rawImageBase64, type: "base64" })
+            });
 
-            // 1. Start the prediction model on Replicate (Using SadTalker face animation model)
-            // We use a free proxy layer to bypass local browser CORS blocks seamlessly
+            if (!imgurResponse.ok) {
+                throw new Error("Failed to process asset upload to secure network hosting.");
+            }
+            const imgurData = await imgurResponse.json();
+            const secureImageUrl = imgurData.data.link;
+
+            statusMessage.textContent = "Uploading media package to compute node arrays...";
+
+            // 2. Transmit explicit data link reference to trigger SadTalker model processing block
             const startResponse = await fetch("https://corsproxy.io/?https://api.replicate.com/v1/predictions", {
                 method: "POST",
                 headers: {
@@ -154,29 +169,27 @@
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    // SadTalker public deployment reference
                     version: "922c12c5c82d47af2e1f5d485fbc35da5b2d8ab03b7484df7ff3a3e6188b4887",
                     input: {
-                        source_image: imageBase64,
-                        driven_audio: audioBase64,
-                        preprocess: "crop", 
-                        still: false 
+                        source_image: secureImageUrl,
+                        // Passing file format directly via data URL limits for tiny sample slices
+                        driven_audio: `data:${audioFile.type};base64,${rawAudioBase64}`,
+                        preprocess: "crop",
+                        still: false
                     }
                 })
             });
 
             if (!startResponse.ok) {
-                throw new Error(`Replicate Initiation Error: ${startResponse.statusText}. Check if your token is valid.`);
+                throw new Error(`Replicate Gateway Failure: ${startResponse.status}. Verify token limits.`);
             }
 
             let prediction = await startResponse.json();
             const predictionId = prediction.id;
 
-            // 2. Poll the API status loop because video rendering takes time
-            statusMessage.textContent = "🎬 AI is physically animating the lips and head movements... (1-2 minutes)";
+            statusMessage.textContent = "🎬 Core AI node is running facial synthesis meshes... (1-2 minutes)";
             
             while (prediction.status !== "succeeded" && prediction.status !== "failed") {
-                // Wait 4 seconds between status checks
                 await new Promise(resolve => setTimeout(resolve, 4000));
                 
                 const checkResponse = await fetch(`https://corsproxy.io/?https://api.replicate.com/v1/predictions/${predictionId}`, {
@@ -185,17 +198,16 @@
                 prediction = await checkResponse.json();
                 
                 if (prediction.status === "processing") {
-                    statusMessage.textContent = "🎬 Still rendering face meshes on the cloud server...";
+                    statusMessage.textContent = "🎬 Processing lip geometries and facial animations...";
                 }
             }
 
             if (prediction.status === "failed") {
-                throw new Error("AI Generation failed on the cloud cluster. Try using a smaller audio file.");
+                throw new Error("Cloud computing script dropped processing. Try short, low-bitrate music snippets.");
             }
 
-            // 3. Output the generated .mp4 file URL straight into our video element
             statusMessage.style.color = '#10b981';
-            statusMessage.textContent = "🚀 Video Rendered Perfectly! Play your AI music video below:";
+            statusMessage.textContent = "🚀 Video Rendered Perfectly! Watch your AI video below:";
             videoPlayer.src = prediction.output;
             videoWrapper.style.display = 'block';
 
